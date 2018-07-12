@@ -1,11 +1,13 @@
 import com.yesir.Employee;
 import org.hibernate.*;
+import org.hibernate.criterion.Projections;
 import org.hibernate.query.Query;
 import org.hibernate.cfg.Configuration;
 
 import javax.persistence.metamodel.EntityType;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.Map;
 
 public class Main {
@@ -29,8 +31,7 @@ public class Main {
     public static void main(final String[] args) throws Exception {
         final Session session = getSession();
         Main main = new Main();
-        main.addEmploee("你好","nnibni",200);
-        main.addEmploee("gggggg","ggggg",2300);
+//        main.addEmploee("小不点","云彩",200);
         try {
             System.out.println("querying all the managed entities...");
             final Metamodel metamodel = session.getSessionFactory().getMetamodel();
@@ -46,6 +47,7 @@ public class Main {
         } finally {
             session.close();
         }
+        main.countEmployee();
     }
 
     public Integer addEmploee(String fname,String lname,int salary){
@@ -54,8 +56,15 @@ public class Main {
         Integer emploeeID= null;
         try {
             transaction = session.beginTransaction();
-            Employee employee = new Employee(fname,lname,salary);
-            emploeeID = (Integer) session.save(employee);
+            for (int i = 0;i<100000;i++){
+                Employee employee = new Employee(fname,lname,salary);
+                emploeeID = (Integer) session.save(employee);
+                if (i % 50 == 0){
+                    session.flush();
+                    session.clear();
+                }
+            }
+
             transaction.commit();
         } catch (HibernateException e){
             if (transaction != null){
@@ -104,5 +113,25 @@ public class Main {
             session.close();
         }
 
+    }
+    public void countEmployee(){
+        Session session = ourSessionFactory.openSession();
+        Transaction tx = null;
+        try{
+            tx = session.beginTransaction();
+            Criteria cr = session.createCriteria(Employee.class);
+
+            // To get total row count.
+            cr.setProjection(Projections.rowCount());
+            List list = cr.list();
+
+            System.out.println("Total Coint: " + list.get(0) );
+            tx.commit();
+        }catch (HibernateException e) {
+            if (tx!=null) tx.rollback();
+            e.printStackTrace();
+        }finally {
+            session.close();
+        }
     }
 }
